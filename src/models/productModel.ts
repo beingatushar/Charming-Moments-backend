@@ -1,8 +1,9 @@
 import mongoose, { Document, Schema } from "mongoose";
+import { randomUUID } from "crypto";
 
 export interface IProduct extends Document {
-  id: string; // This will map to _id
-  dateAdded?: string;
+  id: string;
+  dateAdded?: Date;
   category: string;
   name: string;
   description?: string;
@@ -15,11 +16,19 @@ export interface IProduct extends Document {
   tags?: string[];
   material?: string;
   isDeleted: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 const ProductSchema: Schema = new Schema(
   {
-    dateAdded: { type: String },
+    id: { 
+      type: String,
+      required: true,
+      unique: true,
+      default: () => randomUUID()
+    },
+    dateAdded: { type: Date, default: Date.now },
     category: { type: String, required: true },
     name: { type: String, required: true },
     description: { type: String },
@@ -34,10 +43,11 @@ const ProductSchema: Schema = new Schema(
     isDeleted: { type: Boolean, default: false },
   },
   {
+    timestamps: true, // This automatically adds createdAt and updatedAt
     toJSON: {
       virtuals: true,
       transform: function (doc, ret) {
-        ret.id = ret._id;
+        // No need to transform _id to id since we have explicit id field
         delete ret._id;
         delete ret.__v;
       },
@@ -45,12 +55,19 @@ const ProductSchema: Schema = new Schema(
     toObject: {
       virtuals: true,
       transform: function (doc, ret) {
-        ret.id = ret._id;
+        // No need to transform _id to id since we have explicit id field
         delete ret._id;
         delete ret.__v;
       },
     },
   },
 );
+
+// Add index for better query performance
+ProductSchema.index({ id: 1 }, { unique: true });
+ProductSchema.index({ category: 1 });
+ProductSchema.index({ name: 1 });
+ProductSchema.index({ price: 1 });
+ProductSchema.index({ isDeleted: 1 });
 
 export default mongoose.model<IProduct>("Product", ProductSchema);

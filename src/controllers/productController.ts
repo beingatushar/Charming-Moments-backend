@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import Product, { IProduct } from "../models/productModel";
+import { randomUUID } from "crypto";
 // import logger from '../utils/logger';
 
 export const getAllProducts = async (
@@ -142,7 +143,7 @@ export const getProductById = async (
 ): Promise<void> => {
   try {
     console.log(`Attempting to fetch product with ID: ${req.params.id}`);
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findOne({ id: req.params.id });
 
     if (!product) {
       console.warn(`Product not found with ID: ${req.params.id}`);
@@ -150,7 +151,7 @@ export const getProductById = async (
       return;
     }
     if (product.isDeleted) {
-      console.warn(`Product not found with ID: ${req.params.id}`);
+      console.warn(`Product is deleted with ID: ${req.params.id}`);
       res.status(404).json({ message: "Product not found" });
       return;
     }
@@ -173,21 +174,22 @@ export const createProduct = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  const product: IProduct = req.body;
-  console.log("Starting product creation", { productData: product });
+  const productData: IProduct = req.body;
+  console.log("Starting product creation", { productData });
 
-  const newProduct = new Product(product);
   try {
+    // Mongoose will automatically generate the ID from the schema
+    const newProduct = new Product(productData);
     const savedProduct = await newProduct.save();
-    console.log(`Product created successfully with ID: ${savedProduct._id}`);
+    
+    console.log(`Product created successfully with ID: ${savedProduct.id}`);
     res.status(201).json(savedProduct);
   } catch (error) {
     console.error(
       `Error creating product: ${error instanceof Error ? error.message : "Unknown error"}`,
-      {
-        productData: product,
-      },
+      { productData }
     );
+    
     if (error instanceof Error) {
       res.status(400).json({ message: error.message });
     } else {
@@ -206,9 +208,13 @@ export const updateProduct = async (
 
     console.log(`Attempting to update product ID: ${id}`, { updateData });
 
-    const updatedProduct = await Product.findByIdAndUpdate(id, updateData, {
-      new: true,
-    });
+    const updatedProduct = await Product.findOneAndUpdate(
+      { id }, 
+      updateData, 
+      {
+        new: true,
+      }
+    );
 
     if (!updatedProduct) {
       console.warn(`Product not found for update with ID: ${id}`);
@@ -237,17 +243,22 @@ export const deleteProduct = async (
   try {
     const { id } = req.params;
     console.log(`Attempting to delete product with ID: ${id}`);
-    const product = await Product.findById(id);
+    const product = await Product.findOne({ id });
+    
     if (!product) {
       console.warn(`Product not found for deletion with ID: ${id}`);
       res.status(404).json({ message: "Product not found" });
       return;
     }
+    
     if (product.isDeleted) {
       console.warn(`Product already deleted with ID: ${id}`);
+      res.status(400).json({ message: "Product already deleted" });
+      return;
     }
+    
     product.isDeleted = true;
-    product.save();
+    await product.save();
 
     console.log(`Product deleted successfully with ID: ${id}`);
     res.status(200).json({ message: "Product deleted successfully" });
