@@ -12,19 +12,24 @@ app.use(morgan("combined"));
 
 // Manual CORS middleware with explicit void return type
 app.use((req: Request, res: Response, next: NextFunction): void => {
-  console.log(`Incoming ${req.method} request to ${req.path} from origin ${req.headers.origin}`);
-  
+  console.log(
+    `Incoming ${req.method} request to ${req.path} from origin ${req.headers.origin}`,
+  );
+
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, X-Requested-With",
+  );
   res.header("Access-Control-Allow-Credentials", "true");
-  
+
   if (req.method === "OPTIONS") {
     console.log("Handling OPTIONS preflight");
     res.status(200).end();
     return; // Explicit return without value
   }
-  
+
   next();
 });
 

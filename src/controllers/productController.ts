@@ -181,15 +181,15 @@ export const createProduct = async (
     // Mongoose will automatically generate the ID from the schema
     const newProduct = new Product(productData);
     const savedProduct = await newProduct.save();
-    
+
     console.log(`Product created successfully with ID: ${savedProduct.id}`);
     res.status(201).json(savedProduct);
   } catch (error) {
     console.error(
       `Error creating product: ${error instanceof Error ? error.message : "Unknown error"}`,
-      { productData }
+      { productData },
     );
-    
+
     if (error instanceof Error) {
       res.status(400).json({ message: error.message });
     } else {
@@ -208,13 +208,9 @@ export const updateProduct = async (
 
     console.log(`Attempting to update product ID: ${id}`, { updateData });
 
-    const updatedProduct = await Product.findOneAndUpdate(
-      { id }, 
-      updateData, 
-      {
-        new: true,
-      }
-    );
+    const updatedProduct = await Product.findOneAndUpdate({ id }, updateData, {
+      new: true,
+    });
 
     if (!updatedProduct) {
       console.warn(`Product not found for update with ID: ${id}`);
@@ -244,19 +240,19 @@ export const deleteProduct = async (
     const { id } = req.params;
     console.log(`Attempting to delete product with ID: ${id}`);
     const product = await Product.findOne({ id });
-    
+
     if (!product) {
       console.warn(`Product not found for deletion with ID: ${id}`);
       res.status(404).json({ message: "Product not found" });
       return;
     }
-    
+
     if (product.isDeleted) {
       console.warn(`Product already deleted with ID: ${id}`);
       res.status(400).json({ message: "Product already deleted" });
       return;
     }
-    
+
     product.isDeleted = true;
     await product.save();
 

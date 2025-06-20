@@ -22,11 +22,11 @@ export interface IProduct extends Document {
 
 const ProductSchema: Schema = new Schema(
   {
-    id: { 
+    id: {
       type: String,
       // required: true,
       unique: true,
-      default: () => randomUUID()
+      default: () => randomUUID(),
     },
     dateAdded: { type: Date, default: Date.now },
     category: { type: String, required: true },
