@@ -284,6 +284,8 @@ export const cleanProducts = async (
     for (const product of products) {
       const updateFields: Partial<IProduct> = {};
       let needsUpdate = false;
+      product.id = product._id;
+      await product.save();
 
       console.debug(`Processing product ID: ${product._id}`);
 
