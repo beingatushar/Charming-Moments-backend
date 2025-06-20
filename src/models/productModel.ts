@@ -24,7 +24,7 @@ const ProductSchema: Schema = new Schema(
   {
     id: { 
       type: String,
-      required: true,
+      // required: true,
       unique: true,
       default: () => randomUUID()
     },
