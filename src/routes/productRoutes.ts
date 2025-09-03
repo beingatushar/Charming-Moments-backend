@@ -6,11 +6,13 @@ import {
   deleteProduct,
   cleanProducts,
   getAllCategories,
+  createBulkProducts,
   getAllProducts,
 } from "../controllers/productController";
 
 const router = express.Router();
 
+router.post("/bulk", createBulkProducts);
 router.get("/clean", cleanProducts);
 router.get("/category", getAllCategories);
 // router.get("/category",getAllProductsByCategory)

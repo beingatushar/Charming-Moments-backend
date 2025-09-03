@@ -10,23 +10,22 @@ export const getAllProducts = async (
   try {
     const categoryQuery = req.query.category as string | undefined;
     const sortBy = req.query.sortBy as string | undefined;
+    const limit = req.query.limit ? Number(req.query.limit) : 10;
+    const page = req.query.page ? Number(req.query.page) : 1;
 
-    let products;
     let query: any = { isDeleted: false };
-
     let categories: string[] = [];
+
     // Handle category filtering if query is present
     if (categoryQuery) {
       try {
         // Try to parse as JSON array first
         const decodedQuery = decodeURIComponent(categoryQuery);
-        categories = JSON.parse(decodedQuery) as string[];
+        categories = JSON.parse(decodedQuery);
 
-        if (!Array.isArray(categories)) {
+        if (!Array.isArray(categories))
           throw new Error("Category parameter must be a JSON array");
-        }
       } catch (parseError) {
-        // Fallback to comma-separated string if JSON parse fails
         categories = categoryQuery.split(",").map((cat) => cat.trim());
       }
       query.category = { $in: categories };
@@ -38,8 +37,8 @@ export const getAllProducts = async (
         : "Fetching all products",
     );
 
-    // Database-level sorting (more efficient)
-    let sortOption = {};
+    // Database-level sorting
+    let sortOption: Record<string, 1 | -1> = {};
     if (sortBy) {
       switch (sortBy) {
         case "price-low-to-high":
@@ -68,11 +67,18 @@ export const getAllProducts = async (
       }
     }
 
-    products = await Product.find(query).sort(sortOption);
+    // Pagination
+    const skip = (page - 1) * limit;
 
-    // If we couldn't do the sort at database level (or for complex sorts)
+    // Query with sorting and pagination
+    let products = await Product.find(query)
+      .sort(sortOption)
+      .skip(skip)
+      .limit(limit);
+
+    // For unsupported sorts, fallback to JS sorting
     if (sortBy && Object.keys(sortOption).length === 0) {
-      products.sort((a, b) => {
+      products = products.sort((a, b) => {
         switch (sortBy) {
           case "price-low-to-high":
             return a.price - b.price;
@@ -80,13 +86,13 @@ export const getAllProducts = async (
             return b.price - a.price;
           case "date-added-newest":
             return (
-              new Date(b.dateAdded || "").getTime() -
-              new Date(a.dateAdded || "").getTime()
+              new Date(b.dateAdded ?? "").getTime() -
+              new Date(a.dateAdded ?? "").getTime()
             );
           case "date-added-oldest":
             return (
-              new Date(a.dateAdded || "").getTime() -
-              new Date(b.dateAdded || "").getTime()
+              new Date(a.dateAdded ?? "").getTime() -
+              new Date(b.dateAdded ?? "").getTime()
             );
           case "rating-high-to-low":
             return (b.rating ?? 0) - (a.rating ?? 0);
@@ -106,11 +112,12 @@ export const getAllProducts = async (
     console.error(
       `Error fetching products: ${error instanceof Error ? error.message : "Unknown error"}`,
     );
-    if (error instanceof Error) {
-      res.status(500).json({ message: error.message });
-    } else {
-      res.status(500).json({ message: "An unknown error occurred" });
-    }
+    res
+      .status(500)
+      .json({
+        message:
+          error instanceof Error ? error.message : "An unknown error occurred",
+      });
   }
 };
 
@@ -328,6 +335,33 @@ export const cleanProducts = async (
       res.status(500).json({ message: error.message });
     } else {
       res.status(500).json({ message: "An unknown error occurred" });
+    }
+  }
+};
+
+export const createBulkProducts = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  const productData: IProduct[] = req.body;
+  console.log("Starting bulk product creation", { productData });
+
+  try {
+    // Insert an array of products as bulk
+    const savedProducts = await Product.insertMany(productData);
+
+    console.log(`Bulk products created successfully: ${savedProducts.length}`);
+    res.status(201).json(savedProducts); // Returns all inserted product docs
+  } catch (error) {
+    console.error(
+      `Error creating products: ${error instanceof Error ? error.message : "Unknown error"}`,
+      { productData },
+    );
+
+    if (error instanceof Error) {
+      res.status(400).json({ message: error.message });
+    } else {
+      res.status(400).json({ message: "An unknown error occurred" });
     }
   }
 };
