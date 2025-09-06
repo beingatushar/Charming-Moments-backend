@@ -1,26 +1,63 @@
-import { ProductRepository } from "../repositories/productRepository";
 import { IProduct } from "../models/productModel";
+import { IProductRepository } from "../interfaces/IProductRepository";
+import { IProductService } from "../interfaces/IProductService";
+import logger from "../utils/logger";
 
-export class ProductService {
-  private productRepository: ProductRepository;
+// --- Query Strategy ---
+interface IProductQueryStrategy {
+  buildQuery(queryParams: any): { query: any; sortOption: any };
+}
 
-  constructor() {
-    this.productRepository = new ProductRepository();
-  }
+class DefaultProductQueryStrategy implements IProductQueryStrategy {
+  buildQuery(queryParams: any) {
+    const { category, sortBy } = queryParams;
+    const query: any = { isDeleted: false };
 
-  async getAllProducts(queryParams: any): Promise<IProduct[]> {
-    const { category, sortBy, limit = 10, page = 1 } = queryParams;
-    let query: any = { isDeleted: false };
+    // FIX: Correctly handle a JSON stringified array or a comma-separated string
     if (category) {
-      query.category = { $in: category.split(",") };
+      try {
+        // First, try to parse it as a JSON array
+        const categories = JSON.parse(category);
+        if (Array.isArray(categories) && categories.length > 0) {
+          query.category = { $in: categories };
+        }
+      } catch (error) {
+        // If parsing fails, fall back to treating it as a comma-separated string
+        logger.warn(
+          "Failed to parse category JSON, falling back to comma-separated string.",
+          { category },
+        );
+        query.category = { $in: category.split(",") };
+      }
     }
 
-    let sortOption: Record<string, 1 | -1> = {};
+    const sortOption: Record<string, 1 | -1> = {};
     if (sortBy) {
       const [field, order] = sortBy.split(":");
       sortOption[field] = order === "desc" ? -1 : 1;
     }
 
+    return { query, sortOption };
+  }
+}
+
+// You can add more strategies here, e.g., for different user roles or complex filtering.
+
+export class ProductService implements IProductService {
+  private productRepository: IProductRepository;
+  private queryStrategy: IProductQueryStrategy;
+
+  constructor(
+    productRepository: IProductRepository,
+    queryStrategy: IProductQueryStrategy = new DefaultProductQueryStrategy(),
+  ) {
+    this.productRepository = productRepository;
+    this.queryStrategy = queryStrategy;
+  }
+
+  async getAllProducts(queryParams: any): Promise<IProduct[]> {
+    const { limit = 10, page = 1 } = queryParams;
+    const { query, sortOption } = this.queryStrategy.buildQuery(queryParams);
     const skip = (page - 1) * limit;
 
     return this.productRepository.findAll(query, sortOption, skip, limit);
@@ -31,7 +68,7 @@ export class ProductService {
   }
 
   async createProduct(productData: IProduct): Promise<IProduct> {
-    // Add any business logic here, e.g., validation, etc.
+    // Business logic can go here
     return this.productRepository.create(productData);
   }
 

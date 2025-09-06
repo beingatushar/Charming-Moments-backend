@@ -1,6 +1,7 @@
 import Product, { IProduct } from "../models/productModel";
+import { IProductRepository } from "../interfaces/IProductRepository";
 
-export class ProductRepository {
+export class ProductRepository implements IProductRepository {
   async findAll(
     query: any,
     sortOption: any,

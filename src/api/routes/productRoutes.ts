@@ -1,29 +1,21 @@
 import express from "express";
-import {
-  getProductById,
-  createProduct,
-  updateProduct,
-  deleteProduct,
-  getAllCategories,
-  createBulkProducts,
-  getAllProducts,
-} from "../../controllers/productController"; // Updated import path
+import { productController } from "../../loaders/dependencyInjector";
+import { catchAsync } from "../../utils/catchAsync";
 
 const router = express.Router();
 
-// Route for creating multiple products in one go
-router.post("/bulk", createBulkProducts);
+router.post("/bulk", catchAsync(productController.createBulkProducts));
+router.get("/categories", catchAsync(productController.getAllCategories));
 
-// Route for getting all unique product categories
-router.get("/categories", getAllCategories);
+router
+  .route("/")
+  .get(catchAsync(productController.getAllProducts))
+  .post(catchAsync(productController.createProduct));
 
-// Routes for all products
-router.get("/", getAllProducts);
-router.post("/", createProduct);
-
-// Routes for a single product by its ID
-router.get("/:id", getProductById);
-router.put("/:id", updateProduct);
-router.delete("/:id", deleteProduct);
+router
+  .route("/:id")
+  .get(catchAsync(productController.getProductById))
+  .put(catchAsync(productController.updateProduct))
+  .delete(catchAsync(productController.deleteProduct));
 
 export default router;
