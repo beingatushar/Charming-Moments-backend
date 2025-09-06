@@ -1,340 +1,114 @@
-import { Request, Response } from "express";
-import Product, { IProduct } from "../models/productModel";
-import { randomUUID } from "crypto";
-// import logger from '../utils/logger';
+import { Request, Response, NextFunction } from "express";
+import { ProductService } from "../services/productService";
+import { IProduct } from "../models/productModel";
+import logger from "../utils/logger"; // Assuming you've created a logger utility
+import { z } from "zod";
+
+// Instantiate the service
+const productService = new ProductService();
+
+// --- Input Validation Schemas ---
+
+const productSchema = z.object({
+  category: z.string().trim().min(1, "Category is required"),
+  name: z.string().trim().min(1, "Name is required"),
+  description: z.string().trim().optional(),
+  size: z.string().trim().optional(),
+  price: z.number().positive("Price must be a positive number"),
+  features: z.array(z.string()).optional(),
+  image: z.string().url("Image must be a valid URL").optional(),
+  stock: z.number().int().min(0, "Stock cannot be negative").optional(),
+  rating: z.number().min(0).max(5, "Rating must be between 0 and 5").optional(),
+  tags: z.array(z.string()).optional(),
+  material: z.string().trim().optional(),
+});
+
+const bulkProductSchema = z.array(productSchema);
+
+const updateProductSchema = productSchema.partial(); // All fields are optional for updates
+
+// --- Controller Functions ---
 
 export const getAllProducts = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ): Promise<void> => {
   try {
-    const categoryQuery = req.query.category as string | undefined;
-    const sortBy = req.query.sortBy as string | undefined;
-    const limit = req.query.limit ? Number(req.query.limit) : 10;
-    const page = req.query.page ? Number(req.query.page) : 1;
-
-    let query: any = { isDeleted: false };
-    let categories: string[] = [];
-
-    // Handle category filtering if query is present
-    if (categoryQuery) {
-      try {
-        // Try to parse as JSON array first
-        const decodedQuery = decodeURIComponent(categoryQuery);
-        categories = JSON.parse(decodedQuery);
-
-        if (!Array.isArray(categories))
-          throw new Error("Category parameter must be a JSON array");
-      } catch (parseError) {
-        categories = categoryQuery.split(",").map((cat) => cat.trim());
-      }
-      query.category = { $in: categories };
-    }
-
-    console.log(
-      categoryQuery
-        ? `Fetching products for categories: ${categories}`
-        : "Fetching all products",
-    );
-
-    // Database-level sorting
-    let sortOption: Record<string, 1 | -1> = {};
-    if (sortBy) {
-      switch (sortBy) {
-        case "price-low-to-high":
-          sortOption = { price: 1 };
-          break;
-        case "price-high-to-low":
-          sortOption = { price: -1 };
-          break;
-        case "date-added-newest":
-          sortOption = { dateAdded: -1 };
-          break;
-        case "date-added-oldest":
-          sortOption = { dateAdded: 1 };
-          break;
-        case "rating-high-to-low":
-          sortOption = { rating: -1 };
-          break;
-        case "name-a-z":
-          sortOption = { name: 1 };
-          break;
-        case "name-z-a":
-          sortOption = { name: -1 };
-          break;
-        default:
-          break;
-      }
-    }
-
-    // Pagination
-    const skip = (page - 1) * limit;
-
-    // Query with sorting and pagination
-    let products = await Product.find(query)
-      .sort(sortOption)
-      .skip(skip)
-      .limit(limit);
-
-    // For unsupported sorts, fallback to JS sorting
-    if (sortBy && Object.keys(sortOption).length === 0) {
-      products = products.sort((a, b) => {
-        switch (sortBy) {
-          case "price-low-to-high":
-            return a.price - b.price;
-          case "price-high-to-low":
-            return b.price - a.price;
-          case "date-added-newest":
-            return (
-              new Date(b.dateAdded ?? "").getTime() -
-              new Date(a.dateAdded ?? "").getTime()
-            );
-          case "date-added-oldest":
-            return (
-              new Date(a.dateAdded ?? "").getTime() -
-              new Date(b.dateAdded ?? "").getTime()
-            );
-          case "rating-high-to-low":
-            return (b.rating ?? 0) - (a.rating ?? 0);
-          case "name-a-z":
-            return a.name.localeCompare(b.name);
-          case "name-z-a":
-            return b.name.localeCompare(a.name);
-          default:
-            return 0;
-        }
-      });
-    }
-
-    console.log(`Successfully fetched ${products.length} products`);
+    logger.info("Controller: Fetching all products", { query: req.query });
+    const products = await productService.getAllProducts(req.query);
     res.status(200).json(products);
   } catch (error) {
-    console.error(
-      `Error fetching products: ${error instanceof Error ? error.message : "Unknown error"}`,
-    );
-    res
-      .status(500)
-      .json({
-        message:
-          error instanceof Error ? error.message : "An unknown error occurred",
-      });
+    logger.error("Controller: Error fetching all products", { error });
+    next(error); // Pass to centralized error handler
   }
 };
 
 export const getAllCategories = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ): Promise<void> => {
   try {
-    console.log("Starting to fetch all categories");
-    const allCategories = await Product.distinct("category", {
-      isDeleted: false,
-    });
-    console.log(`Successfully fetched ${allCategories.length} categories`);
-    res.status(200).json(allCategories);
+    logger.info("Controller: Fetching all categories");
+    const categories = await productService.getAllCategories();
+    res.status(200).json(categories);
   } catch (error) {
-    console.error(
-      `Error fetching products: ${error instanceof Error ? error.message : "Unknown error"}`,
-    );
-    if (error instanceof Error) {
-      res.status(500).json({ message: error.message });
-    } else {
-      res.status(500).json({ message: "An unknown error occurred" });
-    }
+    logger.error("Controller: Error fetching categories", { error });
+    next(error);
   }
 };
 
 export const getProductById = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ): Promise<void> => {
   try {
-    console.log(`Attempting to fetch product with ID: ${req.params.id}`);
-    const product = await Product.findOne({ id: req.params.id });
+    const { id } = req.params;
+    logger.info(`Controller: Fetching product by ID: ${id}`);
+    const product = await productService.getProductById(id);
 
     if (!product) {
-      console.warn(`Product not found with ID: ${req.params.id}`);
+      logger.warn(`Controller: Product not found with ID: ${id}`);
       res.status(404).json({ message: "Product not found" });
       return;
     }
-    if (product.isDeleted) {
-      console.warn(`Product is deleted with ID: ${req.params.id}`);
-      res.status(404).json({ message: "Product not found" });
-      return;
-    }
-
-    console.log(`Successfully fetched product with ID: ${req.params.id}`);
     res.status(200).json(product);
   } catch (error) {
-    console.error(
-      `Error fetching product ID ${req.params.id}: ${error instanceof Error ? error.message : "Unknown error"}`,
-    );
-    if (error instanceof Error) {
-      res.status(500).json({ message: error.message });
-    } else {
-      res.status(500).json({ message: "An unknown error occurred" });
-    }
+    logger.error(`Controller: Error fetching product by ID: ${req.params.id}`, {
+      error,
+    });
+    next(error);
   }
 };
 
 export const createProduct = async (
   req: Request,
   res: Response,
-): Promise<void> => {
-  const productData: IProduct = req.body;
-  console.log("Starting product creation", { productData });
-
-  try {
-    // Mongoose will automatically generate the ID from the schema
-    const newProduct = new Product(productData);
-    const savedProduct = await newProduct.save();
-
-    console.log(`Product created successfully with ID: ${savedProduct.id}`);
-    res.status(201).json(savedProduct);
-  } catch (error) {
-    console.error(
-      `Error creating product: ${error instanceof Error ? error.message : "Unknown error"}`,
-      { productData },
-    );
-
-    if (error instanceof Error) {
-      res.status(400).json({ message: error.message });
-    } else {
-      res.status(400).json({ message: "An unknown error occurred" });
-    }
-  }
-};
-
-export const updateProduct = async (
-  req: Request,
-  res: Response,
+  next: NextFunction,
 ): Promise<void> => {
   try {
-    const { id } = req.params;
-    const updateData = req.body;
-
-    console.log(`Attempting to update product ID: ${id}`, { updateData });
-
-    const updatedProduct = await Product.findOneAndUpdate({ id }, updateData, {
-      new: true,
+    const validatedData = productSchema.parse(req.body);
+    logger.info("Controller: Creating new product", {
+      productData: validatedData,
     });
 
-    if (!updatedProduct) {
-      console.warn(`Product not found for update with ID: ${id}`);
-      res.status(404).json({ message: "Product not found" });
-      return;
-    }
-
-    console.log(`Product updated successfully with ID: ${id}`);
-    res.status(200).json(updatedProduct);
+    const newProduct = await productService.createProduct(
+      validatedData as IProduct,
+    );
+    res.status(201).json(newProduct);
   } catch (error) {
-    console.error(
-      `Error updating product ID ${req.params.id}: ${error instanceof Error ? error.message : "Unknown error"}`,
-    );
-    if (error instanceof Error) {
-      res.status(400).json({ message: error.message });
+    if (error instanceof z.ZodError) {
+      logger.warn("Controller: Validation failed for creating product", {
+        errors: error,
+      });
+      res
+        .status(400)
+        .json({ message: "Invalid input", errors: error.flatten() });
     } else {
-      res.status(400).json({ message: "An unknown error occurred" });
-    }
-  }
-};
-
-export const deleteProduct = async (
-  req: Request,
-  res: Response,
-): Promise<void> => {
-  try {
-    const { id } = req.params;
-    console.log(`Attempting to delete product with ID: ${id}`);
-    const product = await Product.findOne({ id });
-
-    if (!product) {
-      console.warn(`Product not found for deletion with ID: ${id}`);
-      res.status(404).json({ message: "Product not found" });
-      return;
-    }
-
-    if (product.isDeleted) {
-      console.warn(`Product already deleted with ID: ${id}`);
-      res.status(400).json({ message: "Product already deleted" });
-      return;
-    }
-
-    product.isDeleted = true;
-    await product.save();
-
-    console.log(`Product deleted successfully with ID: ${id}`);
-    res.status(200).json({ message: "Product deleted successfully" });
-  } catch (error) {
-    console.error(
-      `Error deleting product ID ${req.params.id}: ${error instanceof Error ? error.message : "Unknown error"}`,
-    );
-    if (error instanceof Error) {
-      res.status(500).json({ message: error.message });
-    } else {
-      res.status(500).json({ message: "An unknown error occurred" });
-    }
-  }
-};
-
-export const cleanProducts = async (
-  req: Request,
-  res: Response,
-): Promise<void> => {
-  try {
-    console.log("Starting product cleaning process");
-    const products = await Product.find({});
-    let updatedCount = 0;
-
-    console.log(`Found ${products.length} products to process`);
-
-    for (const product of products) {
-      const updateFields: Partial<IProduct> = {};
-      let needsUpdate = false;
-      product.id = product._id;
-      await product.save();
-
-      console.debug(`Processing product ID: ${product._id}`);
-
-      // Clean string fields
-      if (typeof product.category === "string") {
-        const cleaned = product.category.trim().replace(/\s+/g, " ");
-        if (cleaned !== product.category) {
-          updateFields.category = cleaned;
-          needsUpdate = true;
-        }
-      }
-
-      // ... (rest of your field cleaning logic remains the same)
-
-      if (needsUpdate) {
-        console.debug(`Updating product ID: ${product._id}`, { updateFields });
-        await Product.findByIdAndUpdate(
-          product._id,
-          { $set: updateFields },
-          { new: true },
-        );
-        updatedCount++;
-        console.debug(`Product ID ${product._id} updated successfully`);
-      }
-    }
-
-    console.log(
-      `Product cleaning completed. Updated ${updatedCount}/${products.length} products`,
-    );
-    res.status(200).json({
-      message: "Products cleaned successfully",
-      updatedCount,
-      totalProducts: products.length,
-    });
-  } catch (error) {
-    console.error(
-      `Error during product cleaning: ${error instanceof Error ? error.message : "Unknown error"}`,
-    );
-    if (error instanceof Error) {
-      res.status(500).json({ message: error.message });
-    } else {
-      res.status(500).json({ message: "An unknown error occurred" });
+      logger.error("Controller: Error creating product", { error });
+      next(error);
     }
   }
 };
@@ -342,26 +116,98 @@ export const cleanProducts = async (
 export const createBulkProducts = async (
   req: Request,
   res: Response,
+  next: NextFunction,
 ): Promise<void> => {
-  const productData: IProduct[] = req.body;
-  console.log("Starting bulk product creation", { productData });
-
   try {
-    // Insert an array of products as bulk
-    const savedProducts = await Product.insertMany(productData);
+    const validatedData = bulkProductSchema.parse(req.body);
+    logger.info(`Controller: Creating ${validatedData.length} bulk products`);
 
-    console.log(`Bulk products created successfully: ${savedProducts.length}`);
-    res.status(201).json(savedProducts); // Returns all inserted product docs
+    const newProducts = await productService.createBulkProducts(
+      validatedData as IProduct[],
+    );
+    res.status(201).json(newProducts);
   } catch (error) {
-    console.error(
-      `Error creating products: ${error instanceof Error ? error.message : "Unknown error"}`,
-      { productData },
+    if (error instanceof z.ZodError) {
+      logger.warn("Controller: Validation failed for bulk creating products", {
+        errors: error,
+      });
+      res
+        .status(400)
+        .json({ message: "Invalid input", errors: error.flatten() });
+    } else {
+      logger.error("Controller: Error creating bulk products", { error });
+      next(error);
+    }
+  }
+};
+
+export const updateProduct = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const validatedData = updateProductSchema.parse(req.body);
+    logger.info(`Controller: Updating product with ID: ${id}`, {
+      updateData: validatedData,
+    });
+
+    if (Object.keys(validatedData).length === 0) {
+      res.status(400).json({ message: "No update data provided." });
+      return;
+    }
+
+    const updatedProduct = await productService.updateProduct(
+      id,
+      validatedData,
     );
 
-    if (error instanceof Error) {
-      res.status(400).json({ message: error.message });
-    } else {
-      res.status(400).json({ message: "An unknown error occurred" });
+    if (!updatedProduct) {
+      logger.warn(`Controller: Product not found for update with ID: ${id}`);
+      res.status(404).json({ message: "Product not found" });
+      return;
     }
+    res.status(200).json(updatedProduct);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      logger.warn(
+        `Controller: Validation failed for updating product ID: ${req.params.id}`,
+        { errors: error },
+      );
+      res
+        .status(400)
+        .json({ message: "Invalid input", errors: error.flatten() });
+    } else {
+      logger.error(`Controller: Error updating product ID: ${req.params.id}`, {
+        error,
+      });
+      next(error);
+    }
+  }
+};
+
+export const deleteProduct = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    logger.info(`Controller: Deleting product with ID: ${id}`);
+    const deletedProduct = await productService.deleteProduct(id);
+
+    if (!deletedProduct) {
+      logger.warn(`Controller: Product not found for deletion with ID: ${id}`);
+      res.status(404).json({ message: "Product not found" });
+      return;
+    }
+
+    res.status(200).json({ message: "Product deleted successfully" });
+  } catch (error) {
+    logger.error(`Controller: Error deleting product ID: ${req.params.id}`, {
+      error,
+    });
+    next(error);
   }
 };

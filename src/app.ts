@@ -1,7 +1,7 @@
 import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
-import productRoutes from "./routes/productRoutes";
+import productRoutes from "./api/routes/productRoutes";
 import { connectDB } from "./utils/db";
 import morgan from "morgan";
 

@@ -4,21 +4,25 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
-  cleanProducts,
   getAllCategories,
   createBulkProducts,
   getAllProducts,
-} from "../controllers/productController";
+} from "../../controllers/productController"; // Updated import path
 
 const router = express.Router();
 
+// Route for creating multiple products in one go
 router.post("/bulk", createBulkProducts);
-router.get("/clean", cleanProducts);
-router.get("/category", getAllCategories);
-// router.get("/category",getAllProductsByCategory)
+
+// Route for getting all unique product categories
+router.get("/categories", getAllCategories);
+
+// Routes for all products
 router.get("/", getAllProducts);
-router.get("/:id", getProductById);
 router.post("/", createProduct);
+
+// Routes for a single product by its ID
+router.get("/:id", getProductById);
 router.put("/:id", updateProduct);
 router.delete("/:id", deleteProduct);
 
