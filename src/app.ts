@@ -9,6 +9,7 @@ import userRoutes from "./api/routes/userRoutes";
 import errorHandler from "./middlewares/errorHandler";
 import { ApiError } from "./utils/ApiError";
 import { connectDB, isConnected } from "./utils/db"; // Import isConnected
+import bannerRoutes from "./api/routes/bannerRoutes";
 const app = express();
 
 // Middlewares
@@ -30,6 +31,7 @@ connectDB();
 // API Routes
 app.use("/api/products", productRoutes);
 app.use("/api/user", userRoutes);
+app.use("/api/banner", bannerRoutes);
 
 // Enhanced Health check
 app.get("/api/health", (req, res) => {
