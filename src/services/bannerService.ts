@@ -12,15 +12,15 @@ export class BannerService implements IBannerService {
   async getBanner(): Promise<IBanner> {
     const banner = await this.bannerRepository.getBanner();
     if (!banner) {
-      // Return a default mock object if DB is empty, or create one
+      // 🔹 FIX: Default content using 'content' and '|||' delimiter
       return this.bannerRepository.updateBanner(
-        "⚡ Big Sale! 20% Off All Proteins | 💪 Free Shipping over ₹999",
+        "Welcome to Shelly Nutrition!|||Free Shipping on orders over ₹999",
       );
     }
     return banner;
   }
 
-  async updateBanner(text: string): Promise<IBanner> {
-    return this.bannerRepository.updateBanner(text);
+  async updateBanner(content: string): Promise<IBanner> {
+    return this.bannerRepository.updateBanner(content);
   }
 }
