@@ -1,15 +1,22 @@
-import { Request, Response, NextFunction } from "express";
-import { IProductService } from "../interfaces/IProductService";
+import { Request, Response } from "express";
 import { z } from "zod";
-import { ApiResponse } from "../utils/ApiResponse";
+import { IProductService } from "../interfaces/IProductService";
 import { ApiError } from "../utils/ApiError";
+import { ApiResponse } from "../utils/ApiResponse";
 
 // Schemas remain the same...
 const productSchema = z.object({
   category: z.string().trim().min(1, "Category is required"),
   name: z.string().trim().min(1, "Name is required"),
   price: z.number().positive("Price must be a positive number"),
-  // ...other fields
+  image: z.string().optional(), // <--- This is the critical fix
+  description: z.string().optional(),
+  stock: z.number().int().nonnegative().optional(),
+  features: z.array(z.string()).optional(),
+  tags: z.array(z.string()).optional(),
+  material: z.string().optional(),
+  size: z.string().optional(),
+  rating: z.number().min(0).max(5).optional(),
 });
 const updateProductSchema = productSchema.partial();
 const bulkProductSchema = z.array(productSchema);
