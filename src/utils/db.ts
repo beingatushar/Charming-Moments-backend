@@ -1,5 +1,5 @@
-import mongoose from "mongoose";
 import dotenv from "dotenv";
+import mongoose from "mongoose";
 
 dotenv.config();
 
@@ -32,4 +32,10 @@ class Database {
 
 export const connectDB = () => {
   Database.getInstance();
+};
+
+// New helper to check connection status
+// 1 = connected
+export const isConnected = (): boolean => {
+  return mongoose.connection.readyState === 1;
 };
