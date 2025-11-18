@@ -4,7 +4,7 @@ import { IBannerService } from "../interfaces/IBannerService";
 import { ApiResponse } from "../utils/ApiResponse";
 
 const bannerSchema = z.object({
-  text: z.string().min(1, "Banner text cannot be empty"),
+  content: z.string().min(1, "Banner content cannot be empty"),
 });
 
 export class BannerController {
@@ -20,8 +20,8 @@ export class BannerController {
   };
 
   updateBanner = async (req: Request, res: Response) => {
-    const { text } = bannerSchema.parse(req.body);
-    const banner = await this.bannerService.updateBanner(text);
+    const { content } = bannerSchema.parse(req.body);
+    const banner = await this.bannerService.updateBanner(content);
     new ApiResponse(200, banner, "Banner updated successfully").send(res);
   };
 }

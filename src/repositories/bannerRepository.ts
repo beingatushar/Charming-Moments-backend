@@ -6,13 +6,14 @@ export class BannerRepository implements IBannerRepository {
     return Banner.findOne().exec();
   }
 
-  async updateBanner(text: string): Promise<IBanner> {
-    // Upsert: Update if exists, create if not
+  async updateBanner(content: string): Promise<IBanner> {
     const banner = await Banner.findOneAndUpdate(
       {},
-      { text },
+      { content },
       { new: true, upsert: true, setDefaultsOnInsert: true },
     ).exec();
-    return banner;
+
+    // Force type assertion if needed, though Mongoose usually handles it
+    return banner as IBanner;
   }
 }
