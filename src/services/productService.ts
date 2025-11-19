@@ -79,6 +79,14 @@ export class ProductService implements IProductService {
     return this.productRepository.update(id, updateData);
   }
 
+  async getFeaturedProducts(): Promise<IProduct[]> {
+    return this.productRepository.findAll(
+      { isFeatured: true, isDeleted: false },
+      { createdAt: -1 },
+      0,
+      8,
+    );
+  }
   async deleteProduct(id: string): Promise<IProduct | null> {
     return this.productRepository.delete(id);
   }

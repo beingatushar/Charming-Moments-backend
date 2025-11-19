@@ -6,6 +6,7 @@ const router = express.Router();
 
 router.post("/bulk", catchAsync(productController.createBulkProducts));
 router.get("/categories", catchAsync(productController.getAllCategories));
+router.get("/featured", catchAsync(productController.getFeaturedProducts));
 
 router
   .route("/")

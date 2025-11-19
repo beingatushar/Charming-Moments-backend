@@ -17,6 +17,7 @@ const productSchema = z.object({
   material: z.string().optional(),
   size: z.string().optional(),
   rating: z.number().min(0).max(5).optional(),
+  isFeatured: z.boolean().optional(),
 });
 const updateProductSchema = productSchema.partial();
 const bulkProductSchema = z.array(productSchema);
@@ -85,6 +86,14 @@ export class ProductController {
     );
   };
 
+  getFeaturedProducts = async (req: Request, res: Response) => {
+    const products = await this.productService.getFeaturedProducts();
+    new ApiResponse(
+      200,
+      products,
+      "Featured products retrieved successfully",
+    ).send(res);
+  };
   createBulkProducts = async (req: Request, res: Response) => {
     const validatedData = bulkProductSchema.parse(req.body);
     const newProducts = await this.productService.createBulkProducts(
