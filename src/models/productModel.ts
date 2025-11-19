@@ -16,6 +16,7 @@ export interface IProduct extends Document {
   tags?: string[];
   material?: string;
   isDeleted: boolean;
+  isFeatured?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -41,6 +42,7 @@ const ProductSchema: Schema = new Schema(
     tags: { type: [String] },
     material: { type: String },
     isDeleted: { type: Boolean, default: false },
+    isFeatured: { type: Boolean, default: false },
   },
   {
     timestamps: true, // This automatically adds createdAt and updatedAt
@@ -69,5 +71,6 @@ ProductSchema.index({ category: 1 });
 ProductSchema.index({ name: 1 });
 ProductSchema.index({ price: 1 });
 ProductSchema.index({ isDeleted: 1 });
+ProductSchema.index({ isFeatured: 1 });
 
 export default mongoose.model<IProduct>("Product", ProductSchema);

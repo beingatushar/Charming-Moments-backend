@@ -10,5 +10,6 @@ export interface IProductService {
   ): Promise<IProduct | null>;
   deleteProduct(id: string): Promise<IProduct | null>;
   getAllCategories(): Promise<string[]>;
+  getFeaturedProducts(): Promise<IProduct[]>;
   createBulkProducts(products: IProduct[]): Promise<IProduct[]>;
 }
