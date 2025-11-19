@@ -10,9 +10,12 @@ interface IProductQueryStrategy {
 
 class DefaultProductQueryStrategy implements IProductQueryStrategy {
   buildQuery(queryParams: any) {
-    const { category, sortBy } = queryParams;
+    const { category, sortBy, isFeatured } = queryParams;
     const query: any = { isDeleted: false };
 
+    if (isFeatured === "true") {
+      query.isFeatured = true;
+    }
     // FIX: Correctly handle a JSON stringified array or a comma-separated string
     if (category) {
       try {
@@ -33,8 +36,30 @@ class DefaultProductQueryStrategy implements IProductQueryStrategy {
 
     const sortOption: Record<string, 1 | -1> = {};
     if (sortBy) {
-      const [field, order] = sortBy.split(":");
-      sortOption[field] = order === "desc" ? -1 : 1;
+      switch (sortBy) {
+        case "price-low-to-high":
+          sortOption["price"] = 1;
+          break;
+        case "price-high-to-low":
+          sortOption["price"] = -1;
+          break;
+        case "date-added-newest":
+          sortOption["createdAt"] = -1; // or dateAdded if you prefer
+          break;
+        case "rating-high-to-low":
+          sortOption["rating"] = -1;
+          break;
+        default:
+          if (sortBy.includes(":")) {
+            const [field, order] = sortBy.split(":");
+            sortOption[field] = order === "desc" ? -1 : 1;
+          } else {
+            sortOption["createdAt"] = -1;
+          }
+          break;
+      }
+    } else {
+      sortOption["createdAt"] = -1;
     }
 
     return { query, sortOption };
