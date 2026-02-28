@@ -1,6 +1,14 @@
 import { randomUUID } from "crypto";
 import mongoose, { Document, Schema } from "mongoose";
 
+export interface IAddress {
+  street: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+}
+
 export interface IUser extends Document {
   id: string;
   name: string;
@@ -11,6 +19,7 @@ export interface IUser extends Document {
   avatar?: string;
   createdAt?: Date;
   updatedAt?: Date;
+  addresses?: IAddress[];
 }
 
 const UserSchema: Schema = new Schema(
@@ -50,6 +59,18 @@ const UserSchema: Schema = new Schema(
         delete ret.__v;
         delete ret.password;
       },
+    },
+    addresses: {
+      type: [
+        {
+          street: { type: String, required: true },
+          city: { type: String, required: true },
+          state: { type: String, required: true },
+          postalCode: { type: String, required: true },
+          country: { type: String, required: true },
+        },
+      ],
+      default: [],
     },
   },
 );

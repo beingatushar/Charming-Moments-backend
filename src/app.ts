@@ -4,6 +4,8 @@ import express from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import morgan from "morgan";
+import bannerRoutes from "./api/routes/bannerRoutes";
+import orderRoutes from "./api/routes/orderRoutes";
 import productRoutes from "./api/routes/productRoutes";
 import userRoutes from "./api/routes/userRoutes";
 import errorHandler from "./middlewares/errorHandler";
@@ -33,6 +35,7 @@ app.use("/api/products", productRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/banner", bannerRoutes);
 
+app.use("/api/orders", orderRoutes);
 // Enhanced Health check
 app.get("/api/health", (req, res) => {
   const dbStatus = isConnected();
