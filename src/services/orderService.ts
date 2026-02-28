@@ -47,7 +47,7 @@ export class OrderService implements IOrderService {
       shippingAddress: orderData.shippingAddress,
       paymentMethod: orderData.paymentMethod,
       totalAmount,
-      status: "Pending",
+      status: "Pending" as const,
     };
 
     return this.orderRepository.create(newOrderData);

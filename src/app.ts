@@ -11,7 +11,6 @@ import userRoutes from "./api/routes/userRoutes";
 import errorHandler from "./middlewares/errorHandler";
 import { ApiError } from "./utils/ApiError";
 import { connectDB, isConnected } from "./utils/db"; // Import isConnected
-import bannerRoutes from "./api/routes/bannerRoutes";
 const app = express();
 
 // Middlewares
